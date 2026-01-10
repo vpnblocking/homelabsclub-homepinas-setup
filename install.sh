@@ -109,7 +109,8 @@ show_main_menu() {
             "2" "Install NonRAID" \
             "3" "Show NonRAID Status" \
             "4" "Install MergerFS" \
-            "5" "Exit" \
+            "5" "Install Custom FanControl" \
+            "6" "Exit"
             3>&1 1>&2 2>&3 )
         
         exitstatus=$?
@@ -136,6 +137,10 @@ show_main_menu() {
                 install_mergerfs
                 ;;
             5)
+                load_module "fancrl"
+                install_fanctl
+                ;;
+            6)
                 echo -e "${GREEN}Goodbye!${NC}"
                 exit 0
                 ;;
