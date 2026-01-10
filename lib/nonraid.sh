@@ -369,15 +369,15 @@ wipe_and_format_disk() {
     # Inform kernel of changes
     partprobe "$disk" 2>/dev/null || true
     
-    info_msg "Creating XFS filesystem on $disk"
+    # info_msg "Creating XFS filesystem on $disk"
     
     # Create XFS filesystem
-    if mkfs.xfs -f "$disk"; then
-        success_msg "Filesystem created on $disk (S/N: $serial)"
-    else
-        error_msg "Failed to create filesystem on $disk"
-        return 1
-    fi
+    # if mkfs.xfs -f "$disk"; then
+    #     success_msg "Filesystem created on $disk (S/N: $serial)"
+    # else
+    #     error_msg "Failed to create filesystem on $disk"
+    #     return 1
+    # fi
 
     info_msg "Creating partitions over the wiped disk"
 
