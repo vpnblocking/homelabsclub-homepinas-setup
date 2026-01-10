@@ -41,7 +41,7 @@ install_fanctl() {
     local SERVICE_NAME="homepinas-fanctl"
     local INSTALL_PATH="/usr/local/bin/homepinas-fanctl.sh"
 
-    local RAW_BASE="https://raw.githubusercontent.com/alejandroperezlopez/homelabsclub-homepinas-setup/main"
+    local RAW_BASE="https://raw.githubusercontent.com/vpnblocking/homelabsclub-homepinas-setup/main"
     local REMOTE_SCRIPT_PATH="fanctl/homepinas-fanctl.sh"
 
     local SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
