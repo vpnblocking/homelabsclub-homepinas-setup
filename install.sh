@@ -148,6 +148,12 @@ show_main_menu() {
 
 # Main execution
 main() {
+
+    # CRITICAL: Reconnect stdin to the terminal
+    if [ ! -t 0 ]; then
+        exec < /dev/tty
+    fi
+
     show_banner
     check_and_elevate
     check_base_dependencies

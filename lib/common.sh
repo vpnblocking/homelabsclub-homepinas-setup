@@ -7,7 +7,8 @@
 
 # Pause and wait for user
 pause() {
-    read -p "Press [Enter] key to continue..." 
+    echo "Press [Enter] key to continue..." >&2
+    read -r < /dev/tty
 }
 
 # Check if a command exists
