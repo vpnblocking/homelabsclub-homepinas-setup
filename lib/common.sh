@@ -140,52 +140,66 @@ get_disk_mountpoints() {
 get_available_disks() {
     local system_disk=$(get_system_disk)
     
+    # Send info message to stderr so it doesn't interfere with data output
     info_msg "System disk identified as: $system_disk (will be excluded)" >&2
     
-    # Get all disks (TYPE=disk), exclude loop devices, cd-roms, and system disk
-    lsblk -dn -o NAME,SIZE,TYPE | awk '$3=="disk"' | grep -v -E 'mmcblk|zram|loop' | while read -r line; do
-        local disk_name=$(echo "$line" | awk '{print $1}')
-        local disk_size=$(echo "$line" | awk '{print $2}')
-        local disk_base=$(basename "$disk_name")
-        
-        # Validate disk exists as block device
-        if [ ! -b "$disk_name" ]; then
+    # Get all disks with FULL PATHS using -p flag
+    # TYPE=disk ensures only full disks, not partitions
+    lsblk -dpno NAME,SIZE,TYPE 2>/dev/null | while read -r disk_path disk_size disk_type; do
+        # Skip if not a disk
+        if [ "$disk_type" != "disk" ]; then
             continue
         fi
         
-        # Skip system disk
+        # Skip if empty
+        if [ -z "$disk_path" ]; then
+            continue
+        fi
+        
+        # Get base disk name (without /dev/)
+        local disk_base=$(basename "$disk_path")
+        
+        # Validate disk exists as block device
+        if [ ! -b "$disk_path" ]; then
+            continue
+        fi
+        
+        # Skip loop, zram, and RAM disks
+        if [[ "$disk_base" =~ ^(loop|zram|ram) ]]; then
+            continue
+        fi
+        
+        # Skip system disk (mmcblk typically for CM5)
+        if [[ "$disk_base" =~ ^mmcblk ]]; then
+            # Check if this is the system disk
+            if [ "$disk_base" = "$system_disk" ] || [[ "$disk_base" == ${system_disk}* ]]; then
+                continue
+            fi
+        fi
+        
+        # Skip if disk is system disk
         if [ "$disk_base" = "$system_disk" ]; then
             continue
         fi
         
-        # Skip if disk is root or has root partition
-        local has_root=0
-        if lsblk -no MOUNTPOINT "$disk_name" 2>/dev/null | grep -q '^/$'; then
-            has_root=1
-        fi
-        
-        if [ "$has_root" -gt 0 ]; then
+        # Skip if disk has root partition
+        if lsblk -no MOUNTPOINT "$disk_path" 2>/dev/null | grep -q '^/$'; then
             continue
         fi
         
         # Skip if disk has boot partition
-        local has_boot=0
-        if lsblk -no MOUNTPOINT "$disk_name" 2>/dev/null | grep -q '^/boot'; then
-            has_boot=1
-        fi
-        
-        if [ "$has_boot" -gt 0 ]; then
+        if lsblk -no MOUNTPOINT "$disk_path" 2>/dev/null | grep -q '^/boot'; then
             continue
         fi
         
         # Get serial number
-        local serial=$(get_disk_serial "$disk_name")
+        local serial=$(get_disk_serial "$disk_path")
         
         # Get model
-        local model=$(get_disk_model "$disk_name")
+        local model=$(get_disk_model "$disk_path")
         
-        # Output:  disk_name|size|serial|model
-        echo "$disk_name|$disk_size|$serial|$model"
+        # Output to stdout:   disk_path|size|serial|model
+        echo "$disk_path|$disk_size|$serial|$model"
     done
 }
 
