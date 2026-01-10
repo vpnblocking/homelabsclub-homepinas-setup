@@ -85,6 +85,34 @@ build_nonraid() {
     fi
     
     info_msg "Module name: $module_name"
+
+    # Install nmdctl command-line tool
+    info_msg "Installing nmdctl command-line tool..."
+    
+    if [ -f "tools/nmdctl" ]; then
+        # Copy nmdctl to /usr/local/bin
+        if cp "tools/nmdctl" /usr/local/bin/nmdctl; then
+            # Make it executable
+            chmod +x /usr/local/bin/nmdctl
+            success_msg "nmdctl installed to /usr/local/bin/nmdctl"
+        else
+            error_msg "Failed to copy nmdctl to /usr/local/bin"
+            return 1
+        fi
+    else
+        error_msg "nmdctl not found in tools/ directory!"
+        ls -la tools/
+        return 1
+    fi
+    
+    # Verify nmdctl is accessible
+    if command -v nmdctl &> /dev/null; then
+        success_msg "nmdctl is now available in PATH"
+        info_msg "nmdctl version: $(nmdctl --version 2>&1 || echo 'unknown')"
+    else
+        error_msg "nmdctl was installed but is not in PATH!"
+        return 1
+    fi
     
     # Prepare DKMS source directory
     local dkms_dir="/usr/src/${module_name}-${version}"
@@ -167,7 +195,7 @@ build_nonraid() {
     else
         warning_msg "Module may not be loaded correctly."
     fi
-    
+
     return 0
 }
 
