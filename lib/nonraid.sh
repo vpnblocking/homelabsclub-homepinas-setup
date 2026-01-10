@@ -175,7 +175,7 @@ build_nonraid() {
 select_data_disks() {
     local disk_list=()
     
-    info_msg "Scanning for available disks..."
+    info_msg "Scanning for available disks..." >&2
     
     # Get available disks with serial numbers
     while IFS='|' read -r disk_name disk_size serial model; do
@@ -522,12 +522,12 @@ install_systemd_services() {
     fi
     
     # Ask if user wants to enable notification timer
-    if whiptail --title "Notifications" --yesno \
-        "Do you want to enable status notifications?\n(This requires notification command in /etc/default/nonraid)" 10 70 ; then
-        if systemctl enable nonraid-notify.timer; then
-            success_msg "Enabled status notifications"
-        fi
-    fi
+    # if whiptail --title "Notifications" --yesno \
+    #     "Do you want to enable status notifications?\n(This requires notification command in /etc/default/nonraid)" 10 70 ; then
+    #     if systemctl enable nonraid-notify.timer; then
+    #         success_msg "Enabled status notifications"
+    #     fi
+    # fi
     
     success_msg "Systemd services installed."
     return 0

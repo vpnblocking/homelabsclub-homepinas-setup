@@ -139,10 +139,10 @@ get_disk_mountpoints() {
 get_available_disks() {
     local system_disk=$(get_system_disk)
     
-    info_msg "System disk identified as: $system_disk (will be excluded)"
+    info_msg "System disk identified as: $system_disk (will be excluded)" >&2
     
     # Get all disks (TYPE=disk), exclude loop devices, cd-roms, and system disk
-    lsblk -dpno NAME,SIZE,TYPE 2>/dev/null | grep -w disk | while read -r line; do
+    lsblk -dn -o NAME,SIZE,TYPE | awk '$3=="disk"' | grep -v -E 'mmcblk|zram|loop' | while read -r line; do
         local disk_name=$(echo "$line" | awk '{print $1}')
         local disk_size=$(echo "$line" | awk '{print $2}')
         local disk_base=$(basename "$disk_name")
