@@ -3,7 +3,7 @@
 #############################################
 # HomePinas Setup Script
 # Main entry point for system setup
-# Usage: curl -fsSL https://raw.githubusercontent.com/alejandroperezlopez/homelabsclub-homepinas-setup/main/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/vpnblocking/homelabsclub-homepinas-setup/main/install.sh | bash
 #############################################
 
 set -e
