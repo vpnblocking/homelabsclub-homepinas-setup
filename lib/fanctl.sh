@@ -29,6 +29,55 @@ check_fanctl_dependencies() {
     return 0
 }
 
+check_i2c_fan_overlay() {
+
+    local CONFIG_FILE="/boot/firmware/config.txt"
+    local OVERLAY_LINE="dtoverlay=i2c-fan,emc2302,i2c_csi_dsi0"
+
+    info_msg "Checking i2c fan controller overlay..."
+
+    if grep -q "^${OVERLAY_LINE}$" "$CONFIG_FILE" 2>/dev/null; then
+        success_msg "i2c-fan overlay already present."
+        return 0
+    fi
+
+    warning_msg "i2c-fan overlay not found."
+    warning_msg "Fan controller will NOT work without it."
+
+    if whiptail --title "Enable Fan Controller" --yesno \
+"To enable hardware fan control, the following line is required:
+
+${OVERLAY_LINE}
+
+It will be added to:
+${CONFIG_FILE}
+
+A SYSTEM REBOOT IS REQUIRED after this.
+
+Do you want to add it now?" \
+        18 70; then
+
+        echo "" >> "$CONFIG_FILE"
+        echo "# HomePinas fan controller" >> "$CONFIG_FILE"
+        echo "$OVERLAY_LINE" >> "$CONFIG_FILE"
+
+        success_msg "Overlay added to config.txt"
+
+        whiptail --title "Reboot required" --msgbox \
+"The fan controller overlay has been added.
+
+You MUST reboot the system before fan control can work.
+
+After reboot, re-run the installer to finish the setup." \
+        14 70
+
+        return 2
+    else
+        error_msg "Fan control installation aborted (overlay missing)."
+        return 1
+    fi
+}
+
 install_fanctl() {
     # Easter egg 🥚
         if systemctl list-unit-files | grep -q '^homepinas-fanctl.service'; then
@@ -47,6 +96,11 @@ install_fanctl() {
         fi
     info_msg "Installing HomePinas Fan Control..."
     
+    check_i2c_fan_overlay
+    case $? in
+        0) ;;              # todo OK
+        2) return 0 ;;     # overlay añadido → esperar reboot
+        *) re
     if ! check_fanctl_dependencies; then
         error_msg "Cannot continue without required dependencies."
         return 1
