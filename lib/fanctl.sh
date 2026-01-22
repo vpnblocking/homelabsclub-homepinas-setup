@@ -3,6 +3,7 @@
 #############################################
 # Fan Control Module (HomePinas)
 #############################################
+
 check_fanctl_dependencies() {
 
     info_msg "Checking fan control dependencies..."
@@ -11,6 +12,10 @@ check_fanctl_dependencies() {
 
     if ! command -v smartctl &>/dev/null; then
         missing_deps+=("smartmontools")
+    fi
+
+    if ! command -v sensors &>/dev/null; then
+        missing_deps+=("lm-sensors")
     fi
 
     if [ ${#missing_deps[@]} -gt 0 ]; then
@@ -32,39 +37,54 @@ check_fanctl_dependencies() {
 check_i2c_fan_overlay() {
 
     local CONFIG_FILE="/boot/firmware/config.txt"
+    local I2C_LINE="dtparam=i2c_arm=on"
     local OVERLAY_LINE="dtoverlay=i2c-fan,emc2301,addr=0x2e,i2c_csi_dsi0,minpwm=65,maxpwm=255,midtemp=45000,maxtemp=6500"
 
-    info_msg "Checking i2c fan controller overlay..."
+    info_msg "Checking i2c fan controller overlay and i2c support..."
 
-    if grep -q "^${OVERLAY_LINE}$" "$CONFIG_FILE" 2>/dev/null; then
-        success_msg "i2c-fan overlay already present."
+    local has_i2c=0
+    local has_overlay=0
+
+    grep -q "^${I2C_LINE}$" "$CONFIG_FILE" 2>/dev/null && has_i2c=1
+    grep -q "^${OVERLAY_LINE}$" "$CONFIG_FILE" 2>/dev/null && has_overlay=1
+
+    if [ "$has_i2c" -eq 1 ] && [ "$has_overlay" -eq 1 ]; then
+        success_msg "i2c enabled and i2c-fan overlay already present."
         return 0
     fi
 
-    warning_msg "i2c-fan overlay not found."
+    warning_msg "Required i2c configuration not found."
     warning_msg "Fan controller will NOT work without it."
 
-    if whiptail --title "Enable Fan Controller" --yesno \
-"To enable hardware fan control, the following line is required:
+    if whiptail --title "Enable I2C Fan Controller" --yesno \
+"To enable hardware fan control, the following lines are required:
 
+${I2C_LINE}
 ${OVERLAY_LINE}
 
-It will be added to:
+They will be added to:
 ${CONFIG_FILE}
 
 A SYSTEM REBOOT IS REQUIRED after this.
 
-Do you want to add it now?" \
-        18 70; then
+Do you want to add them now?" \
+        20 75; then
 
         echo "" >> "$CONFIG_FILE"
         echo "# HomePinas fan controller" >> "$CONFIG_FILE"
-        echo "$OVERLAY_LINE" >> "$CONFIG_FILE"
 
-        success_msg "Overlay added to config.txt"
+        if [ "$has_i2c" -eq 0 ]; then
+            echo "$I2C_LINE" >> "$CONFIG_FILE"
+        fi
+
+        if [ "$has_overlay" -eq 0 ]; then
+            echo "$OVERLAY_LINE" >> "$CONFIG_FILE"
+        fi
+
+        success_msg "I2C and fan controller overlay added to config.txt"
 
         whiptail --title "Reboot required" --msgbox \
-"The fan controller overlay has been added.
+"The I2C configuration and fan controller overlay have been added.
 
 You MUST reboot the system before fan control can work.
 
@@ -73,7 +93,7 @@ After reboot, re-run the installer to finish the setup." \
 
         return 2
     else
-        error_msg "Fan control installation aborted (overlay missing)."
+        error_msg "Fan control installation aborted (missing i2c configuration)."
         return 1
     fi
 }
@@ -121,7 +141,6 @@ journalctl -u homepinas-fanctl.service -f)" \
     local SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
     local TIMER_FILE="/etc/systemd/system/${SERVICE_NAME}.timer"
 
-    # Descargar script
     info_msg "Downloading fan control script from GitHub..."
     if ! curl -fsSL "${RAW_BASE}/${REMOTE_SCRIPT_PATH}" -o "${INSTALL_PATH}"; then
         error_msg "Failed to download fan control script."
@@ -131,7 +150,6 @@ journalctl -u homepinas-fanctl.service -f)" \
     chmod +x "${INSTALL_PATH}"
     success_msg "Fan control script installed at ${INSTALL_PATH}"
 
-    # Crear service
     info_msg "Creating systemd service..."
     cat > "${SERVICE_FILE}" <<EOF
 [Unit]
@@ -150,7 +168,6 @@ StandardOutput=journal
 StandardError=journal
 EOF
 
-    # Crear timer
     info_msg "Creating systemd timer..."
     cat > "${TIMER_FILE}" <<EOF
 [Unit]
@@ -166,7 +183,6 @@ Persistent=true
 WantedBy=timers.target
 EOF
 
-    # Recargar y activar
     info_msg "Enabling fan control timer..."
     systemctl daemon-reexec
     systemctl daemon-reload
@@ -175,13 +191,12 @@ EOF
     success_msg "HomePinas Fan Control installed and running."
 
     whiptail --msgbox \
-    "Fan control installed successfully.
-    
-    Service: ${SERVICE_NAME}.service
-    Timer:   ${SERVICE_NAME}.timer
-    
-    Logs:
-    journalctl -u ${SERVICE_NAME}.service -f" \
-    16 70
+"Fan control installed successfully.
 
+Service: ${SERVICE_NAME}.service
+Timer:   ${SERVICE_NAME}.timer
+
+Logs:
+journalctl -u ${SERVICE_NAME}.service -f" \
+    16 70
 }
